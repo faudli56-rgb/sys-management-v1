@@ -2,101 +2,390 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة القيادة - التحكم المركزي</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b132b; color: #fff; margin: 0; padding: 20px; }
-        .control-panel { max-width: 900px; margin: 0 auto; background: #1c2541; padding: 25px; border-radius: 8px; border-top: 4px solid #d4af37; }
-        .btn { padding: 12px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; margin: 5px; transition: 0.3s; }
-        textarea { width: 100%; height: 120px; background: #0b132b; color: #fff; border: 1px solid #3a506b; padding: 15px; margin-top: 10px; }
+        /* === تصميم واجهة التحكم === */
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b132b; color: #fff; margin: 0; padding: 20px; }
+        .control-panel { max-width: 1000px; margin: 0 auto; background: #1c2541; padding: 25px; border-radius: 8px; border-top: 4px solid #d4af37; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { color: #d4af37; text-align: center; }
+        .btn { padding: 12px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; margin: 5px; transition: 0.3s; font-size: 15px; }
+        .btn:hover { opacity: 0.8; }
+        input { padding: 10px; border-radius: 4px; border: 1px solid #3a506b; background: #0b132b; color: #fff; }
+        textarea { width: 100%; height: 120px; background: #0b132b; color: #fff; border: 1px solid #3a506b; padding: 15px; margin-top: 10px; border-radius: 4px; box-sizing: border-box; font-size: 15px; line-height: 1.5; }
         #status-msg { text-align: center; margin-top: 15px; font-weight: bold; color: #d4af37; }
+
+        /* === حاوية التقرير والأزرار السفلية === */
+        #doc-container { display: none; margin: 30px auto; text-align: center; max-width: 220mm; }
+        
+        /* أزرار المشاركة والتنزيل الخارجية */
+        #action-buttons { background: #1c2541; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #3a506b; }
+
+        /* === التقرير الرسمي === */
+        #official-report { 
+            background: white; color: black; width: 210mm; min-height: 297mm; 
+            margin: 0 auto; padding: 10mm; position: relative; text-align: right;
+            font-family: 'Times New Roman', serif; box-sizing: border-box;
+            z-index: 1; box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+        
+        .report-border { border: 2px solid #000; padding: 15px; min-height: 270mm; position: relative; overflow: hidden; }
+        
+        /* العلامة المائية المكبرة */
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; opacity: 0.08; z-index: -1; pointer-events: none; }
+        
+        /* الترويسة */
+        .header-table { width: 100%; border-collapse: collapse; font-weight: bold; font-size: 14pt; }
+        .header-table td { vertical-align: top; }
+        
+        /* المخطوطة يمين والنصوص الجديدة */
+        .header-right { text-align: center; }
+        .header-right img { max-width: 200px; }
+        .header-right .sub-text { font-size: 13pt; font-weight: bold; line-height: 1.4; margin-top: 5px; }
+        
+        .header-center { text-align: center; }
+        .header-center img { height: 90px; margin-top: 5px; }
+        
+        .header-left { text-align: left; line-height: 1.6; direction: rtl; }
+        
+        /* الخط الفاصل */
+        hr.divider { border: 0; border-top: 2px solid #000; width: 35%; margin: 15px auto; }
+        
+        /* العناوين */
+        .doc-title { text-align: center; font-size: 15pt; font-weight: bold; margin: 10px auto; text-decoration: underline; }
+        .section-title { font-weight: bold; font-size: 14pt; text-decoration: underline; margin-top: 15px; margin-bottom: 5px; }
+        .content-text { font-size: 13pt; line-height: 1.6; white-space: pre-wrap; padding-right: 15px; }
+        
+        /* الجداول */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10pt; text-align: center; }
+        .data-table th, .data-table td { border: 1px solid #000; padding: 5px; font-weight: bold; }
+        
+        /* التوقيع (مائل ومظبوط المكان) */
+        .signature-block { position: absolute; bottom: 40px; left: 40px; text-align: right; font-weight: bold; font-size: 14pt; line-height: 1.5; width: 220px; }
+        .signature-img { width: 170px; position: absolute; top: -60px; left: 20px; z-index: 2; mix-blend-mode: multiply; transform: rotate(-10deg); }
+
+        @media print { 
+            body * { visibility: hidden; }
+            #official-report, #official-report * { visibility: visible; }
+            #official-report { position: absolute; left: 0; top: 0; margin: 0; padding: 0; border: none; box-shadow: none; }
+        }
     </style>
 </head>
 <body>
 
-<div class="control-panel">
-    <h2>التحكم المركزي</h2>
-    <button class="btn" style="background:#3498db;" onclick="fetchData()">📥 سحب البيانات</button>
-    <button class="btn" style="background:#27ae60;" onclick="generateReliablePDF()">⬇️ تصدير PDF سريع</button>
-    <textarea id="missions" placeholder="المهام..."></textarea>
-    <textarea id="movements" placeholder="التحركات..."></textarea>
-    <div id="status-msg">جاهز.</div>
+<!-- شاشة تسجيل الدخول -->
+<div class="control-panel" id="login-screen" style="max-width: 400px;">
+    <h2>بوابة القيادة العليا</h2>
+    <input type="text" id="username" placeholder="اسم المستخدم" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
+    <input type="password" id="password" placeholder="كلمة المرور" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
+    <button class="btn" style="background:#d4af37; color:#0b132b; width:100%;" onclick="login()">دخول للمنظومة</button>
+</div>
+
+<!-- لوحة التحكم -->
+<div class="control-panel" id="admin-panel" style="display:none;">
+    <h2>التحكم المركزي والعمليات</h2>
+    
+    <div style="background:#0b132b; padding:15px; border-radius:5px; text-align:center; border: 1px solid #3a506b;">
+        <button class="btn" style="background:#3498db;" onclick="fetchData()">📥 سحب تقارير اليوم</button>
+        <button class="btn" style="background:#9b59b6;" onclick="fetchDraft()">📂 فتح المسودة</button>
+        <button class="btn" style="background:#f39c12;" onclick="saveDraft()">💾 حفظ كمسودة</button>
+        <button class="btn" style="background:#27ae60;" onclick="approveReport()">✅ اعتماد وعرض التقرير</button>
+    </div>
+
+    <h3 style="color:#d4af37; margin-top:20px;">المهام المنفذة:</h3>
+    <textarea id="missions"></textarea>
+    
+    <h3 style="color:#d4af37;">التحركات والزيارات:</h3>
+    <textarea id="movements"></textarea>
+    
+    <div id="status-msg">النظام جاهز.</div>
+</div>
+
+<!-- حاوية التقرير وأزرار التصدير تظهر بعد الاعتماد -->
+<div id="doc-container">
+    <div id="official-report">
+        <div class="report-border">
+            <!-- العلامة المائية المكبرة -->
+            <img src="https://lh3.googleusercontent.com/d/1_w3dOe8DhNoHwBfn1KBqczGupCv0AVOc" class="watermark" crossorigin="anonymous">
+            
+            <table class="header-table">
+                <tr>
+                    <td style="width: 33%;" class="header-right">
+                        <!-- المخطوطة يمين -->
+                        <img src="https://lh3.googleusercontent.com/d/1y3bTDxMFwU0zGI-0XJOK070CIQxOuLHI" crossorigin="anonymous">
+                        <!-- النص المطلوب تحت المخطوطة -->
+                        <div class="sub-text">
+                            المنطقة العسكرية السادسة<br>
+                            شعبة الرعاية الاجتماعية
+                        </div>
+                    </td>
+                    <td style="width: 33%;" class="header-center">
+                        <div style="font-family: 'Traditional Arabic', serif; font-size: 20pt; font-weight: bold; margin-bottom: 5px;">بسم الله الرحمن الرحيم</div>
+                        <!-- الطير الجمهوري -->
+                        <img src="https://lh3.googleusercontent.com/d/1Hdpr5cf2Z0bCLO6qLYsWxBikD_miplSh" crossorigin="anonymous">
+                        <div style="font-weight: bold; font-size: 11pt; margin-top: 2px;">سري جداً</div>
+                    </td>
+                    <td style="width: 33%;" class="header-left">
+                        الرقم : ( &nbsp; &nbsp; &nbsp; &nbsp; )<br>
+                        التاريخ : <span id="doc-date"></span>
+                    </td>
+                </tr>
+            </table>
+            
+            <!-- الخط الفاصل المطلوب -->
+            <hr class="divider">
+            
+            <div class="doc-title" id="doc-title-text">تقرير الموقف اليومي لشعبة الرعاية الاجتماعية ليوم <span id="day-name"></span> خلال 24 ساعة الماضية بتاريخ <span id="doc-date-2"></span></div>
+            
+            <div class="section-title">المهام المنفذة:</div>
+            <div class="content-text" id="pdf-missions"></div>
+            
+            <div class="section-title">التحركات والزيارات:</div>
+            <div class="content-text" id="pdf-movements"></div>
+            
+            <div class="section-title" style="text-align: center; text-decoration: none; border-bottom: 1px solid #000; margin-top: 25px;">الخسائر البشرية والمادية</div>
+            
+            <div style="font-weight: bold; font-size: 12pt; margin-top: 10px;">الخسائر البشرية:</div>
+            <table class="data-table" id="table-human">
+                <thead>
+                    <tr>
+                        <th>م</th><th>الرقم العسكري</th><th>الرتبة</th><th>الرتبة المستحقة</th><th>الاسم</th><th>الوحدة</th>
+                        <th>تاريخ الاستشهاد/الاصابة</th><th>مكان الاستشهاد/الاصابة</th><th>سبب الاستشهاد/الاصابة</th>
+                        <th>نوع الاصابة</th><th>المحافظة</th><th>المديرية</th><th>العزلة</th><th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+
+            <div style="font-weight: bold; font-size: 12pt; margin-top: 15px;">الخسائر المادية:</div>
+            <table class="data-table" id="table-material">
+                <thead>
+                    <tr>
+                        <th>م</th><th>النوع</th><th>موديل</th><th>الرقم</th><th>نوع التدمير</th><th>نوع العطل</th><th>السبب</th><th>الوحدة</th><th>المكان</th><th>التاريخ</th><th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+
+            <div class="section-title">المطالب الأساسية:</div>
+            <div class="content-text"><br><br></div>
+
+            <div class="signature-block">
+                <!-- التوقيع المائل المطلوب -->
+                <img src="https://lh3.googleusercontent.com/d/1-swUSNpQPKptK_AlTzlFEOxFvdwj4sQ7" class="signature-img" crossorigin="anonymous">
+                <div style="position: relative; z-index: 3;">
+                    الرتبة / عقيــــــــــــــد<br>
+                    الاسم / محمد حسين يحيى ذيبان<br>
+                    رئيس شعبة الرعاية الاجتماعية
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- الأزرار الخارجية للتصدير والمشاركة -->
+    <div id="action-buttons">
+        <button class="btn" style="background:#e74c3c;" onclick="downloadPDF()">⬇️ حفظ الهاتف (PDF)</button>
+        <button class="btn" style="background:#2ecc71;" onclick="sharePDF()">📤 مشاركة (واتس/سنجل)</button>
+    </div>
 </div>
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwXrjPyVzj_z-wIHEYEbhaKRb2wTxbZoNwF5Uw9OkbOA0r_XALUlnYD6Vm0a9Mq9Cy0/exec"; 
     const KEY = "Marib_Cipher_2026_!@#";
+    
+    let allHumanLosses = []; 
+    let allMaterialLosses = [];
+    let currentUser = "";
+    
+    const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const now = new Date();
+    const formattedDate = now.getFullYear() + "/" + String(now.getMonth()+1).padStart(2, '0') + "/" + String(now.getDate()).padStart(2, '0');
+    document.getElementById('doc-date').innerText = formattedDate;
+    document.getElementById('doc-date-2').innerText = formattedDate;
+    document.getElementById('day-name').innerText = "(" + days[now.getDay()] + ")";
 
+    async function login() {
+        document.getElementById('status-msg').innerText = "جاري التحقق...";
+        try {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const res = await fetch(`${GAS_URL}?action=login&username=${u}&password=${p}`);
+            const data = await res.json();
+            if(data.status === "success" && data.role === "admin") {
+                currentUser = data.fullName;
+                document.getElementById('login-screen').style.display = "none";
+                document.getElementById('admin-panel').style.display = "block";
+                document.getElementById('status-msg').innerText = "تم الدخول بنجاح.";
+            } else { alert("بيانات غير صحيحة أو لا تملك الصلاحية."); }
+        } catch(e) { alert("خطأ في الاتصال بقاعدة البيانات."); }
+    }
+
+    // دالة السحب الذكية مع نظام التشخيص (بدون شروط تاريخ)
     async function fetchData() {
         const msg = document.getElementById('status-msg');
+        msg.innerText = "جاري الاتصال بقاعدة البيانات وسحب التقارير...";
         try {
             const res = await fetch(`${GAS_URL}?action=get_data`);
             const data = await res.json();
-            let m = "", mv = "";
-            data.forEach(r => {
-                const dec = JSON.parse(CryptoJS.AES.decrypt(r.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
-                m += dec.missions + "\n";
-                mv += dec.movements + "\n";
+            
+            // التشخيص 1: هل الجدول يرسل بيانات؟
+            if (!data || data.length === 0) {
+                msg.style.color = "#e74c3c";
+                msg.innerText = "خطأ: الجدول في جوجل شيت فارغ، أو اسم الورقة بالأسفل ليس (Data).";
+                return;
+            }
+
+            let cMissions = "", cMovements = "";
+            let fetchedCount = 0;
+            let errorCount = 0;
+            allHumanLosses = []; allMaterialLosses = [];
+
+            // التشخيص 2: فك التشفير وجمع كل البيانات مباشرة (تجاهل التاريخ تماماً)
+            data.forEach(row => {
+                if(row.encryptedPayload) {
+                    try {
+                        // محاولة فك التشفير
+                        const decryptedBytes = CryptoJS.AES.decrypt(row.encryptedPayload, KEY);
+                        const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+                        
+                        if(!decryptedText) throw new Error("تشفير فارغ");
+                        const decrypted = JSON.parse(decryptedText);
+                        
+                        // إذا نجح فك التشفير، نسحب البيانات فوراً
+                        fetchedCount++;
+                        if(decrypted.missions) cMissions += `- ${decrypted.missions}\n`;
+                        if(decrypted.movements) cMovements += `- ${decrypted.movements}\n`;
+                        if(decrypted.humanLosses) allHumanLosses.push(...decrypted.humanLosses);
+                        if(decrypted.materialLosses) allMaterialLosses.push(...decrypted.materialLosses);
+                        
+                    } catch(e) {
+                        // إذا فشل فك التشفير (بسبب اختلاف المفتاح أو تلف النص)
+                        errorCount++;
+                    }
+                }
             });
-            document.getElementById('missions').value = m;
-            document.getElementById('movements').value = mv;
-            msg.innerText = "تم سحب البيانات بنجاح.";
-        } catch(e) { msg.innerText = "خطأ في السحب."; }
+
+            // طباعة البيانات في مربعات النصوص
+            document.getElementById('missions').value = cMissions;
+            document.getElementById('movements').value = cMovements;
+            
+            // التشخيص 3: النتيجة النهائية على الشاشة
+            if (fetchedCount > 0) {
+                msg.style.color = "#2ecc71";
+                let warning = errorCount > 0 ? ` (تم تجاهل ${errorCount} تقارير تالفة أو مفتاحها خطأ)` : "";
+                msg.innerText = `تم سحب وتجميع (${fetchedCount}) تقارير بنجاح.` + warning;
+            } else if (errorCount > 0) {
+                msg.style.color = "#e74c3c";
+                msg.innerText = `يوجد ${errorCount} تقارير في الجدول، لكن فشل فك تشفيرها! (تأكد أن مفتاح التشفير KEY متطابق).`;
+            }
+            
+        } catch(e) { 
+            msg.style.color = "#e74c3c"; 
+            msg.innerText = "خطأ في الاتصال بالخادم. يرجى التحقق من الرابط وعمل New Deployment."; 
+        }
+    }
+    async function saveDraft() {
+        document.getElementById('status-msg').innerText = "جاري حفظ المسودة...";
+        const payload = { missions: document.getElementById('missions').value, movements: document.getElementById('movements').value, humanLosses: allHumanLosses, materialLosses: allMaterialLosses };
+        const enc = CryptoJS.AES.encrypt(JSON.stringify(payload), KEY).toString();
+        try {
+            await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "save_draft", fullName: currentUser, encryptedPayload: enc }) });
+            document.getElementById('status-msg').innerText = "تم حفظ المسودة بنجاح.";
+        } catch(e) { document.getElementById('status-msg').innerText = "فشل حفظ المسودة."; }
     }
 
-    // إضافة الخطوط العربية لـ PDFMake
-    pdfMake.fonts = {
-        Arial: { normal: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf', bold: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf' }
-    };
+    async function fetchDraft() {
+        document.getElementById('status-msg').innerText = "جاري سحب المسودة...";
+        try {
+            const res = await fetch(`${GAS_URL}?action=get_draft`);
+            const data = await res.json();
+            if(data.encryptedPayload) {
+                const report = JSON.parse(CryptoJS.AES.decrypt(data.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
+                document.getElementById('missions').value = report.missions || "";
+                document.getElementById('movements').value = report.movements || "";
+                allHumanLosses = report.humanLosses || []; allMaterialLosses = report.materialLosses || [];
+                document.getElementById('status-msg').innerText = "تم فتح المسودة.";
+            } else { document.getElementById('status-msg').innerText = "لا توجد مسودة."; }
+        } catch(e) { document.getElementById('status-msg').innerText = "خطأ الاتصال."; }
+    }
 
-    function generateReliablePDF() {
-        const docDefinition = {
-            pageSize: 'A4',
-            pageMargins: [40, 40, 40, 40],
-            content: [
-                {
-                    table: {
-                        widths: ['*', 'auto', '*'],
-                        body: [
-                            [
-                                { stack: [
-                                    { image: 'logoR', width: 150 },
-                                    { text: 'المنطقة العسكرية السادسة\nشعبة الرعاية الاجتماعية', style: 'headerSub' }
-                                ], alignment: 'center' },
-                                { stack: [
-                                    { text: 'بسم الله الرحمن الرحيم', style: 'basmalah' },
-                                    { image: 'logoC', width: 100 },
-                                    { text: 'سري جداً', style: 'secret' }
-                                ], alignment: 'center' },
-                                { text: 'الرقم: (     )\nالتاريخ: ' + new Date().toLocaleDateString(), alignment: 'left', bold: true }
-                            ]
-                        ]
-                    }, layout: 'noBorders'
-                },
-                { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 520, y2: 5, lineWidth: 2 }] },
-                { text: 'تقرير الموقف اليومي', style: 'title' },
-                { text: 'المهام المنفذة:', style: 'subTitle' },
-                { text: document.getElementById('missions').value, style: 'content' },
-                { text: 'التحركات والزيارات:', style: 'subTitle' },
-                { text: document.getElementById('movements').value, style: 'content' }
-            ],
-            images: {
-                logoR: 'https://lh3.googleusercontent.com/d/1y3bTDxMFwU0zGI-0XJOK070CIQxOuLHI',
-                logoC: 'https://lh3.googleusercontent.com/d/1Hdpr5cf2Z0bCLO6qLYsWxBikD_miplSh'
-            },
-            styles: {
-                headerSub: { fontSize: 12, bold: true, margin: [0, 5, 0, 0] },
-                basmalah: { fontSize: 16, bold: true, margin: [0, 0, 0, 5] },
-                secret: { fontSize: 10, color: 'red', decoration: 'underline' },
-                title: { fontSize: 16, bold: true, alignment: 'center', margin: [0, 20, 0, 20] },
-                subTitle: { fontSize: 14, bold: true, decoration: 'underline', margin: [0, 10, 0, 5] },
-                content: { fontSize: 12, margin: [0, 5, 0, 10] }
-            },
-            defaultStyle: { font: 'Arial' }
+    // دالة الاعتماد وعرض التقرير داخل النظام
+    function approveReport() {
+        document.getElementById('pdf-missions').innerText = document.getElementById('missions').value;
+        document.getElementById('pdf-movements').innerText = document.getElementById('movements').value;
+        
+        const tbodyHuman = document.querySelector('#table-human tbody');
+        tbodyHuman.innerHTML = '';
+        if(allHumanLosses.length > 0) {
+            allHumanLosses.forEach((l, i) => tbodyHuman.innerHTML += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
+        } else {
+            tbodyHuman.innerHTML = `<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+        }
+
+        const tbodyMaterial = document.querySelector('#table-material tbody');
+        tbodyMaterial.innerHTML = '';
+        if(allMaterialLosses.length > 0) {
+            allMaterialLosses.forEach((l, i) => tbodyMaterial.innerHTML += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
+        } else {
+            tbodyMaterial.innerHTML = `<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+        }
+
+        // إظهار التقرير والأزرار على الشاشة
+        document.getElementById('doc-container').style.display = 'block';
+        document.getElementById('status-msg').innerText = "تم الاعتماد. يمكنك مراجعة التقرير في الأسفل ومشاركته.";
+        
+        // النزول التلقائي للصفحة لرؤية التقرير
+        window.scrollTo({ top: document.getElementById('doc-container').offsetTop, behavior: 'smooth' });
+    }
+
+    // تجهيز خيارات التصدير المشتركة
+    function getPdfOptions() {
+        return {
+            margin: 0,
+            filename: `تقرير_الموقف_${formattedDate.replace(/\//g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 1 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        pdfMake.createPdf(docDefinition).download('تقرير_الموقف.pdf');
+    }
+
+    // تحميل وتصدير مباشر للهاتف
+    function downloadPDF() {
+        const element = document.getElementById('official-report');
+        document.getElementById('status-msg').innerText = "جاري التصدير وتنزيل الملف...";
+        html2pdf().set(getPdfOptions()).from(element).save().then(() => {
+            document.getElementById('status-msg').innerText = "تم حفظ الملف بنجاح.";
+        });
+    }
+
+    // مشاركة عبر التطبيقات (واتس/سنجل)
+    async function sharePDF() {
+        const element = document.getElementById('official-report');
+        document.getElementById('status-msg').innerText = "جاري تحضير الملف للمشاركة...";
+        try {
+            const pdfBlob = await html2pdf().set(getPdfOptions()).from(element).outputPdf('blob');
+            const file = new File([pdfBlob], `تقرير_الموقف_${formattedDate.replace(/\//g, '-')}.pdf`, { type: 'application/pdf' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'تقرير الموقف اليومي',
+                    text: 'مرفق لكم تقرير الموقف اليومي المعتمد لشعبة الرعاية الاجتماعية.'
+                });
+                document.getElementById('status-msg').innerText = "تمت المشاركة بنجاح.";
+            } else {
+                alert("متصفحك الحالي لا يدعم المشاركة المباشرة للملفات. سيتم تنزيل الملف بدلاً من ذلك لتشاركه يدوياً.");
+                downloadPDF();
+            }
+        } catch(e) {
+            document.getElementById('status-msg').innerText = "تم إلغاء أو فشل المشاركة.";
+        }
     }
 </script>
 </body>
