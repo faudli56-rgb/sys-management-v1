@@ -251,7 +251,9 @@
                 if(row.encryptedPayload) {
                     try {
                         // محاولة فك التشفير
-                        const decryptedBytes = CryptoJS.AES.decrypt(row.encryptedPayload, KEY);
+                        let rawData = row.encryptedPayload.replace(/PLUS/g, '+').replace(/SLASH/g, '/').replace(/EQUAL/g, '=');
+                        const decryptedBytes = CryptoJS.AES.decrypt(rawData, KEY);
+                        const decrypted = JSON.parse(decryptedBytes.toString(CryptoJS.enc.Utf8));
                         const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
                         
                         if(!decryptedText) throw new Error("تشفير فارغ");
