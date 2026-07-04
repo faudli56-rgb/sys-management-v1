@@ -4,60 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة القيادة - التحكم المركزي</title>
-    <!-- استدعاء المكتبات -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* تصميم واجهة التحكم (كحلي وذهبي احترافي) */
+        /* تصميم واجهة التحكم */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b132b; color: #fff; margin: 0; padding: 20px; }
         .control-panel { max-width: 1000px; margin: 0 auto; background: #1c2541; padding: 25px; border-radius: 8px; border-top: 4px solid #d4af37; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: #d4af37; text-align: center; }
         .btn { padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; margin: 5px; transition: 0.3s; }
         .btn:hover { opacity: 0.8; }
         select, input { padding: 10px; border-radius: 4px; border: 1px solid #3a506b; background: #0b132b; color: #fff; }
-        textarea { width: 100%; height: 120px; background: #0b132b; color: #fff; border: 1px solid #3a506b; padding: 15px; margin-top: 10px; border-radius: 4px; box-sizing: border-box; font-size: 15px; line-height: 1.5; }
+        textarea { width: 100%; height: 100px; background: #0b132b; color: #fff; border: 1px solid #3a506b; padding: 15px; margin-top: 10px; border-radius: 4px; box-sizing: border-box; font-size: 15px; line-height: 1.5; }
         #status-msg { text-align: center; margin-top: 15px; font-weight: bold; color: #d4af37; }
         
-        /* تصميم ورقة التقرير الرسمي (مطابق تماماً لـ Word) */
+        /* === تصميم التقرير الرسمي المطابق لـ Word === */
         #doc-container { display: none; background: #555; padding: 20px; text-align: center; }
         #official-report { 
-            background: white; color: black; max-width: 210mm; min-height: 297mm; 
-            margin: 0 auto; padding: 20mm 15mm; position: relative; text-align: right;
-            font-family: 'Times New Roman', Times, serif; box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            overflow: hidden; z-index: 1;
+            background: white; color: black; width: 210mm; min-height: 297mm; 
+            margin: 0 auto; padding: 10mm; position: relative; text-align: right;
+            font-family: 'Arial', 'Times New Roman', serif; box-sizing: border-box;
+            z-index: 1;
         }
         
-        /* العلامة المائية */
-        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 65%; opacity: 0.08; z-index: -1; pointer-events: none; }
-        
-        /* الترويسة العسكرية */
-        .header-table { width: 100%; border-collapse: collapse; font-weight: bold; font-size: 14pt; margin-bottom: 20px; }
-        .header-table td { vertical-align: top; }
-        .doc-title { text-align: center; font-size: 18pt; font-weight: bold; text-decoration: underline; margin: 20px 0; }
-        
-        /* الجداول والنصوص الداخلية */
-        .content-section { font-size: 14pt; line-height: 1.8; white-space: pre-wrap; margin-bottom: 20px; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12pt; }
-        .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: center; }
-        .data-table th { background-color: #f2f2f2; font-weight: bold; }
-        
-        /* التوقيع */
-        .signature { margin-top: 50px; text-align: left; padding-left: 50px; font-weight: bold; font-size: 14pt; line-height: 1.5; }
-        
-        .support { text-align: center; margin-top: 30px; font-size: 12px; color: #888; }
-        .support a { color: #d4af37; text-decoration: none; }
+        /* الإطار المزدوج المحيط بالتقرير */
+        .report-border {
+            border: 3px double #000;
+            padding: 15px;
+            min-height: 270mm;
+            position: relative;
+        }
 
+        /* العلامة المائية بالوسط */
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60%; opacity: 0.1; z-index: -1; pointer-events: none; }
+        
+        /* الترويسة */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .header-table td { vertical-align: top; }
+        .header-right img { max-width: 220px; }
+        .header-center { text-align: center; }
+        .header-center .basmalah { font-family: 'Traditional Arabic', serif; font-size: 22pt; margin-bottom: 5px; }
+        .header-center img { height: 80px; }
+        .header-left { text-align: left; font-size: 14pt; font-weight: bold; line-height: 1.6; direction: rtl; }
+        
+        /* العناوين والنصوص */
+        .doc-title { text-align: center; font-size: 14pt; font-weight: bold; border-bottom: 2px solid #000; display: inline-block; margin: 10px auto; padding-bottom: 3px; }
+        .section-title { font-weight: bold; font-size: 14pt; text-decoration: underline; margin-top: 15px; margin-bottom: 5px; }
+        .content-text { font-size: 12pt; line-height: 1.6; white-space: pre-wrap; padding-right: 15px; }
+        
+        /* الجداول */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10pt; text-align: center; }
+        .data-table th, .data-table td { border: 1px solid #000; padding: 4px; font-weight: bold; }
+        
+        /* التوقيع (يسار) */
+        .signature-block { position: absolute; bottom: 30px; left: 30px; text-align: right; font-weight: bold; font-size: 14pt; line-height: 1.5; width: 250px; }
+        .signature-img { width: 180px; position: absolute; top: -50px; left: 20px; z-index: 2; mix-blend-mode: multiply; }
+        
         @media print { 
-            .control-panel, #login-screen, .support, #doc-container { display: none !important; } 
+            .control-panel, #doc-container { display: none !important; } 
             body { background: white; padding: 0; } 
-            #official-report { box-shadow: none; margin: 0; padding: 0; display: block; } 
+            #official-report { margin: 0; padding: 0; display: block; box-shadow: none; border: none;} 
         }
     </style>
 </head>
 <body>
 
-<!-- شاشة الدخول -->
+<!-- شاشة تسجيل الدخول -->
 <div class="control-panel" id="login-screen" style="max-width: 400px;">
     <h2>بوابة القيادة العليا</h2>
     <input type="text" id="username" placeholder="اسم المستخدم" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
@@ -65,86 +77,126 @@
     <button class="btn" style="background:#d4af37; color:#0b132b; width:100%;" onclick="login()">دخول للمنظومة</button>
 </div>
 
-<!-- لوحة التحكم المركزية -->
+<!-- لوحة التحكم -->
 <div class="control-panel" id="admin-panel" style="display:none;">
     <h2>التحكم المركزي والعمليات</h2>
-    
     <div style="background:#0b132b; padding:15px; border-radius:5px; text-align:center; border: 1px solid #3a506b;">
         <button class="btn" style="background:#3498db;" onclick="fetchData('today')">📥 سحب تقارير اليوم</button>
         <button class="btn" style="background:#9b59b6;" onclick="fetchDraft()">📂 فتح المسودة</button>
         <button class="btn" style="background:#f39c12;" onclick="saveDraft()">💾 حفظ كمسودة</button>
-        <button class="btn" style="background:#2ecc71;" onclick="exportToExcel()">📊 تصدير Excel</button>
-        <button class="btn" style="background:#34495e;" onclick="exportToWord()">📝 تصدير Word</button>
-        <button class="btn" style="background:#e74c3c;" onclick="generatePDF()">📄 اعتماد (PDF)</button>
+        <!-- الزر المخصص لتصدير PDF -->
+        <button class="btn" style="background:#e74c3c; font-size: 16px; padding: 12px 20px;" onclick="generatePDF()">📄 اعتماد وتصدير PDF</button>
     </div>
 
-    <div style="background:#0b132b; padding:15px; border-radius:5px; text-align:center; border: 1px solid #3a506b; margin-top:10px;">
-        <strong style="color:#d4af37;">التقارير الدورية (تراكمي): </strong>
-        <select id="report-period">
-            <option value="month">تقرير الشهر الحالي</option>
-            <option value="quarter">تقرير الربع الحالي</option>
-            <option value="year">التقرير السنوي</option>
-        </select>
-        <button class="btn" style="background:#d4af37; color:#0b132b;" onclick="fetchData(document.getElementById('report-period').value)">توليد التقرير المدمج</button>
-    </div>
-
-    <h3 style="color:#d4af37; margin-top:20px;">المهام والمنجزات (مساحة التعديل والمسودة):</h3>
+    <h3 style="color:#d4af37; margin-top:20px;">المهام المنفذة:</h3>
     <textarea id="missions"></textarea>
     
     <h3 style="color:#d4af37;">التحركات والزيارات:</h3>
     <textarea id="movements"></textarea>
     
-    <div id="status-msg">جاهز للاستخدام.</div>
+    <div id="status-msg">النظام جاهز.</div>
 </div>
 
-<!-- حاوية التقرير الرسمي (تظهر عند التصدير) -->
+<!-- التقرير الرسمي (المطابق للصورة) -->
 <div id="doc-container">
     <div id="official-report">
-        <!-- ضع رابط العلامة المائية هنا -->
-        <img src="https://drive.google.com/file/d/1_w3dOe8DhNoHwBfn1KBqczGupCv0AVOc/view?usp=sharing" class="watermark" id="watermark-img" onerror="this.style.display='none'">
-        
-        <table class="header-table">
-            <tr>
-                <td style="width: 33%; text-align: right; line-height:1.4;">الجمهورية اليمنية<br>وزارة الدفاع<br>رئاسة هيئة الأركان العامة<br>قيادة المنطقة العسكرية السادسة<br>شعبة الرعاية الاجتماعية</td>
-                <td style="width: 33%; text-align: center;">
-                    <!-- ضع رابط الطير الجمهوري هنا -->
-                    <img src="https://drive.google.com/file/d/1Hdpr5cf2Z0bCLO6qLYsWxBikD_miplSh/view?usp=sharing" height="85" id="logo-img" onerror="this.style.display='none'">
-                    <br><span style="border:1px solid #000; padding:2px 10px; font-size:12pt; display:inline-block; margin-top:5px;">سري جداً</span>
-                </td>
-                <td style="width: 33%; text-align: left; line-height:1.4;">الرقم: ( &nbsp; &nbsp; &nbsp; )<br>التاريخ: <span id="doc-date"></span></td>
-            </tr>
-        </table>
-        
-        <div class="doc-title" id="doc-title-text">تقرير الموقف اليومي لشعبة الرعاية الاجتماعية</div>
-        
-        <div style="font-weight:bold; font-size:14pt; text-decoration:underline;">أولاً: المهام المنفذة:</div>
-        <div class="content-section" id="pdf-missions"></div>
-        
-        <div style="font-weight:bold; font-size:14pt; text-decoration:underline;">ثانياً: التحركات والزيارات:</div>
-        <div class="content-section" id="pdf-movements"></div>
-        
-        <!-- مساحة الجداول المخفية (تظهر برمجياً إذا وجدت بيانات) -->
-        <div id="tables-area"></div>
+        <div class="report-border">
+            <!-- العلامة المائية -->
+            <img src="https://drive.google.com/uc?export=view&id=1_w3dOe8DhNoHwBfn1KBqczGupCv0AVOc" class="watermark" crossorigin="anonymous">
+            
+            <table class="header-table">
+                <tr>
+                    <td style="width: 33%;" class="header-right">
+                        <!-- المخطوطة يمين -->
+                        <img src="https://drive.google.com/uc?export=view&id=1y3bTDxMFwU0zGI-0XJOK070CIQxOuLHI" crossorigin="anonymous" onerror="this.style.display='none'">
+                    </td>
+                    <td style="width: 33%;" class="header-center">
+                        <div class="basmalah">بسم الله الرحمن الرحيم</div>
+                        <!-- الطير الجمهوري -->
+                        <img src="https://drive.google.com/uc?export=view&id=1Hdpr5cf2Z0bCLO6qLYsWxBikD_miplSh" crossorigin="anonymous">
+                        <div style="font-weight: bold; font-size: 10pt; margin-top: 2px;">سري جداً</div>
+                    </td>
+                    <td style="width: 33%;" class="header-left">
+                        الرقم : ( &nbsp; &nbsp; &nbsp; &nbsp; )<br>
+                        التاريخ : <span id="doc-date"></span>
+                    </td>
+                </tr>
+            </table>
+            
+            <div style="text-align: center;">
+                <div class="doc-title" id="doc-title-text">تقرير الموقف اليومي لشعبة الرعاية الاجتماعية ليوم <span id="day-name"></span> خلال 24 ساعة الماضية بتاريخ <span id="doc-date-2"></span></div>
+            </div>
+            
+            <div class="section-title">المهام المنفذة:</div>
+            <div class="content-text" id="pdf-missions"></div>
+            
+            <div class="section-title">التحركات والزيارات:</div>
+            <div class="content-text" id="pdf-movements"></div>
+            
+            <div class="section-title" style="text-align: center; text-decoration: none; border-bottom: 1px solid #000; margin-top: 20px;">الخسائر البشرية والمادية</div>
+            
+            <!-- جدول الخسائر البشرية (ظاهر دائماً) -->
+            <div style="font-weight: bold; font-size: 12pt; margin-top: 10px;">الخسائر البشرية:</div>
+            <table class="data-table" id="table-human">
+                <thead>
+                    <tr>
+                        <th>م</th><th>الرقم العسكري</th><th>الرتبة</th><th>الرتبة المستحقة</th><th>الاسم</th><th>الوحدة</th>
+                        <th>تاريخ<br>الاستشهاد/الاصابة</th><th>مكان<br>الاستشهاد/الاصابة</th><th>سبب<br>الاستشهاد/الاصابة</th>
+                        <th>نوع<br>الاصابة</th><th>المحافظة</th><th>المديرية</th><th>العزلة</th><th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
 
-        <div class="signature">
-            الرتبة / عقيــــــــــــــد<br>الإسم / محمد حسين يحيى ذيبان<br>
-            <div style="border-top: 1px solid #000; margin-top: 10px; padding-top: 5px; display: inline-block; width: 220px; text-align:center;">رئيس شعبة الرعاية الاجتماعية</div>
+            <!-- جدول الخسائر المادية (ظاهر دائماً) -->
+            <div style="font-weight: bold; font-size: 12pt; margin-top: 15px;">الخسائر المادية:</div>
+            <table class="data-table" id="table-material">
+                <thead>
+                    <tr>
+                        <th>م</th><th>النوع</th><th>موديل</th><th>الرقم</th><th>نوع التدمير</th><th>نوع العطل</th><th>السبب</th><th>الوحدة</th><th>المكان</th><th>التاريخ</th><th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+
+            <div class="section-title">المطالب الأساسية:</div>
+            <div class="content-text"><br><br></div>
+
+            <!-- مربع التوقيع (في الجهة اليسرى أسفل التقرير) -->
+            <div class="signature-block">
+                <!-- صورة التوقيع -->
+                <img src="https://drive.google.com/uc?export=view&id=1-swUSNpQPKptK_AlTzlFEOxFvdwj4sQ7" class="signature-img" crossorigin="anonymous" onerror="this.style.display='none'">
+                <div style="position: relative; z-index: 3;">
+                    الرتبة / عقيــــــــــــــد<br>
+                    الاسم / محمد حسين يحيى ذيبان<br>
+                    رئيس شعبة الرعاية الاجتماعية
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="support">للدعم الفني والتقني: <a href="https://wa.me/967772914419" target="_blank">967772914419</a></div>
-
 <script>
+    // الرابط المحدث والخاص بك
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwXrjPyVzj_z-wIHEYEbhaKRb2wTxbZoNwF5Uw9OkbOA0r_XALUlnYD6Vm0a9Mq9Cy0/exec"; 
     const KEY = "Marib_Cipher_2026_!@#";
     
     let allHumanLosses = []; 
     let allMaterialLosses = [];
     let currentUser = "";
-    document.getElementById('doc-date').innerText = new Date().toLocaleDateString('ar-YE');
+    
+    // ضبط التواريخ والأيام
+    const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const now = new Date();
+    const formattedDate = now.getFullYear() + "/" + String(now.getMonth()+1).padStart(2, '0') + "/" + String(now.getDate()).padStart(2, '0');
+    document.getElementById('doc-date').innerText = formattedDate;
+    document.getElementById('doc-date-2').innerText = formattedDate;
+    document.getElementById('day-name').innerText = "(" + days[now.getDay()] + ")";
 
-    // 1. تسجيل الدخول
     async function login() {
         document.getElementById('status-msg').innerText = "جاري التحقق...";
         try {
@@ -161,11 +213,9 @@
         } catch(e) { alert("خطأ في الاتصال بقاعدة البيانات."); }
     }
 
-    // 2. سحب البيانات (ذكي ودقيق للفترات)
     async function fetchData(period) {
         const msg = document.getElementById('status-msg');
-        msg.innerText = "جاري الجلب وتصفية البيانات...";
-        
+        msg.innerText = "جاري سحب تقارير اليوم...";
         try {
             const res = await fetch(`${GAS_URL}?action=get_data`);
             const data = await res.json();
@@ -173,31 +223,18 @@
             let cMissions = "", cMovements = "", count = 0;
             allHumanLosses = []; allMaterialLosses = [];
             
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            const currentQuarter = Math.floor(currentMonth / 3);
-
-            // تحديث العنوان حسب الفترة
-            const titles = { 'today':'اليومي', 'month':'الشهري', 'quarter':'الربع سنوي', 'year':'السنوي' };
-            document.getElementById('doc-title-text').innerText = `تقرير الموقف ${titles[period]} لشعبة الرعاية الاجتماعية`;
+            const nY = now.getFullYear(), nM = now.getMonth(), nD = now.getDate();
 
             data.forEach(row => {
                 try {
                     if(row.encryptedPayload) {
                         const decrypted = JSON.parse(CryptoJS.AES.decrypt(row.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
-                        const rDate = new Date(decrypted.date);
-                        let match = false;
+                        let rDate = decrypted.date ? new Date(decrypted.date) : now;
                         
-                        if(period === 'today' && rDate.toDateString() === now.toDateString()) match = true;
-                        if(period === 'month' && rDate.getMonth() === currentMonth && rDate.getFullYear() === currentYear) match = true;
-                        if(period === 'quarter' && Math.floor(rDate.getMonth() / 3) === currentQuarter && rDate.getFullYear() === currentYear) match = true;
-                        if(period === 'year' && rDate.getFullYear() === currentYear) match = true;
-                        
-                        if(match) {
+                        if(rDate.getFullYear() === nY && rDate.getMonth() === nM && rDate.getDate() === nD) {
                             count++;
-                            if(decrypted.missions) cMissions += `📌 [${row.departmentId}]:\n${decrypted.missions}\n\n`;
-                            if(decrypted.movements) cMovements += `🚗 [${row.departmentId}]:\n${decrypted.movements}\n\n`;
+                            if(decrypted.missions) cMissions += `- ${decrypted.missions}\n`;
+                            if(decrypted.movements) cMovements += `- ${decrypted.movements}\n`;
                             if(decrypted.humanLosses) allHumanLosses.push(...decrypted.humanLosses);
                             if(decrypted.materialLosses) allMaterialLosses.push(...decrypted.materialLosses);
                         }
@@ -207,19 +244,18 @@
             
             document.getElementById('missions').value = cMissions;
             document.getElementById('movements').value = cMovements;
-            msg.innerText = count > 0 ? `تم تجميع (${count}) تقارير بنجاح.` : "لا توجد تقارير مطابقة لهذه الفترة.";
+            msg.innerText = count > 0 ? `تم تجميع (${count}) تقارير بنجاح.` : "لا توجد تقارير مطابقة لهذا اليوم.";
             
-        } catch(e) { msg.innerText = "خطأ في الاتصال."; }
+        } catch(e) { msg.innerText = "خطأ في الاتصال بالسيرفر."; }
     }
 
-    // 3. المسودات
     async function saveDraft() {
         document.getElementById('status-msg').innerText = "جاري حفظ المسودة...";
         const payload = { missions: document.getElementById('missions').value, movements: document.getElementById('movements').value, humanLosses: allHumanLosses, materialLosses: allMaterialLosses };
         const enc = CryptoJS.AES.encrypt(JSON.stringify(payload), KEY).toString();
         try {
             await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "save_draft", fullName: currentUser, encryptedPayload: enc }) });
-            document.getElementById('status-msg').innerText = "تم حفظ المسودة في السحابة.";
+            document.getElementById('status-msg').innerText = "تم حفظ المسودة بنجاح.";
         } catch(e) { document.getElementById('status-msg').innerText = "فشل حفظ المسودة."; }
     }
 
@@ -238,57 +274,43 @@
         } catch(e) { document.getElementById('status-msg').innerText = "خطأ الاتصال."; }
     }
 
-    // 4. بناء الجداول وتجهيز التقرير
-    function prepareReportView() {
+    function generatePDF() {
+        // نقل النصوص من لوحة التحكم إلى ورقة التقرير
         document.getElementById('pdf-missions').innerText = document.getElementById('missions').value;
         document.getElementById('pdf-movements').innerText = document.getElementById('movements').value;
         
-        let html = "";
+        // تعبئة جداول الخسائر (وترك صف فارغ إذا لم توجد بيانات كما طلبت)
+        const tbodyHuman = document.querySelector('#table-human tbody');
+        tbodyHuman.innerHTML = '';
         if(allHumanLosses.length > 0) {
-            html += `<div style="font-weight:bold; font-size:14pt; text-decoration:underline;">ثالثاً: الخسائر البشرية:</div>
-                     <table class="data-table"><tr><th>م</th><th>الرقم</th><th>الرتبة</th><th>الإسم</th><th>الوحدة</th><th>تاريخ الإصابة</th><th>المكان</th><th>السبب</th><th>النوع</th><th>المحافظة</th><th>المديرية</th><th>الحالة</th></tr>`;
-            allHumanLosses.forEach((l, i) => html += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
-            html += `</table>`;
+            allHumanLosses.forEach((l, i) => tbodyHuman.innerHTML += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
+        } else {
+            tbodyHuman.innerHTML = `<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
-        if(allMaterialLosses.length > 0) {
-            html += `<div style="font-weight:bold; font-size:14pt; text-decoration:underline; margin-top:15px;">رابعاً: الخسائر المادية:</div>
-                     <table class="data-table"><tr><th>م</th><th>النوع</th><th>موديل</th><th>الرقم</th><th>التدمير</th><th>العطل</th><th>السبب</th><th>الوحدة</th><th>المكان</th><th>التاريخ</th></tr>`;
-            allMaterialLosses.forEach((l, i) => html += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
-            html += `</table>`;
-        }
-        document.getElementById('tables-area').innerHTML = html;
-    }
 
-    // 5. التصدير (PDF, Word, Excel)
-    function generatePDF() {
-        prepareReportView();
+        const tbodyMaterial = document.querySelector('#table-material tbody');
+        tbodyMaterial.innerHTML = '';
+        if(allMaterialLosses.length > 0) {
+            allMaterialLosses.forEach((l, i) => tbodyMaterial.innerHTML += `<tr><td>${i+1}</td>${l.map(c=>`<td>${c}</td>`).join('')}</tr>`);
+        } else {
+            tbodyMaterial.innerHTML = `<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+        }
+
+        // إظهار التقرير وبدء التصدير
         const element = document.getElementById('official-report');
         document.getElementById('doc-container').style.display = "block";
+        document.getElementById('status-msg').innerText = "جاري تحويل التقرير إلى PDF...";
         
         html2pdf().set({
             margin: 0,
-            filename: `التقرير_الرسمي_${new Date().toISOString().slice(0,10)}.pdf`,
+            filename: `تقرير_الموقف_${formattedDate.replace(/\//g, '-')}.pdf`,
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { scale: 2, useCORS: true, allowTaint: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         }).from(element).save().then(() => {
             document.getElementById('doc-container').style.display = "none";
+            document.getElementById('status-msg').innerText = "تم تصدير الـ PDF بنجاح!";
         });
-    }
-
-    function exportToWord() {
-        prepareReportView();
-        const html = "<html dir='rtl'><head><meta charset='utf-8'><style>body{font-family:'Times New Roman';} table{border-collapse:collapse;width:100%;} th,td{border:1px solid black;padding:5px;}</style></head><body>" + document.getElementById("official-report").innerHTML + "</body></html>";
-        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob(['\ufeff', html], {type: 'application/msword'})); 
-        link.download = `تقرير_${new Date().toISOString().slice(0,10)}.doc`; link.click();
-    }
-
-    function exportToExcel() {
-        if(!allHumanLosses.length && !allMaterialLosses.length) return alert("لا توجد خسائر لتصديرها.");
-        const wb = XLSX.utils.book_new();
-        if(allHumanLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["الرقم","الرتبة","الرتبة المستحقة","الإسم","الوحدة","التاريخ","المكان","السبب","النوع","المحافظة","المديرية","القرية","الحالة"], ...allHumanLosses]), "بشرية");
-        if(allMaterialLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["النوع","موديل","الرقم","التدمير","العطل","السبب","الوحدة","المكان","التاريخ","ملاحظات"], ...allMaterialLosses]), "مادية");
-        XLSX.writeFile(wb, `الخسائر_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 </script>
 </body>
