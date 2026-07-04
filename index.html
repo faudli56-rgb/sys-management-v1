@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة القيادة - التقارير الآمنة</title>
+    <!-- مكتبات التشفير والتصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #0A192F; --gold: #d4af37; --bg: #f4f6f9; }
+        body { font-family: 'Times New Roman', Times, serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
+        
+        .control-panel { max-width: 1100px; margin: 0 auto; background: var(--primary); padding: 25px; border-radius: 8px; border-bottom: 5px solid var(--gold); box-shadow: 0 4px 15px rgba(0,0,0,0.3); color: white;}
+        .btn { padding: 12px 15px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; margin: 5px; transition: 0.3s;}
+        .btn:hover { opacity: 0.8; }
+        input, select, textarea { padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; width: 100%; box-sizing: border-box;}
+        
+        .dashboard-section { background: #112240; padding: 20px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #1f3a60; }
+        .dashboard-section h3 { color: var(--gold); margin-top: 0; border-bottom: 1px solid #1f3a60; padding-bottom: 10px;}
+
+        /* تنسيق الورقة الرسمية للتصدير */
+        #official-report { background: white; color: black; max-width: 210mm; min-height: 297mm; margin: 20px auto; padding: 20mm 15mm; border: 1px solid #ccc; font-size: 13pt; line-height: 1.6; display: none; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 14pt;}
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11pt; }
+        table.data-table th, table.data-table td { border: 1px solid #000; text-align: center; padding: 6px; }
+        table.data-table th { background-color: #f2f2f2; font-weight: bold;}
+        .section-title { font-weight:bold; font-size:14pt; text-decoration:underline; margin-top:15px; margin-bottom:10px;}
+        .signature-box { margin-top: 50px; padding-left: 50px; text-align: left; font-weight: bold; font-size: 14pt;}
+        
+        .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #888; }
+        .footer a { color: var(--gold); text-decoration: none; font-weight: bold; }
+
+        @media print { 
+            .control-panel, #login-screen, .footer { display: none !important; } 
+            body { background: white; padding: 0; } 
+            #official-report { border: none; margin: 0; padding: 0; display: block; } 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- شاشة تسجيل الدخول -->
+    <div class="control-panel" id="login-screen" style="max-width: 400px; text-align: center; margin-top: 100px;">
+        <h2 style="color:var(--gold);">غرفة القيادة العليا</h2>
+        <input type="text" id="username" placeholder="اسم المستخدم">
+        <input type="password" id="password" placeholder="كلمة المرور">
+        <button class="btn" style="background:var(--gold); color:var(--primary); width:100%; margin-top:20px; font-size:16px;" onclick="login()">تسجيل الدخول</button>
+        <div id="login-status" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
+    </div>
+
+    <!-- لوحة التحكم الرئيسية -->
+    <div class="control-panel" id="admin-panel" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--gold); padding-bottom: 15px; margin-bottom: 20px;">
+            <h2 style="color:var(--gold); margin:0;">لوحة التحكم والسيطرة</h2>
+            <span id="user-badge" style="background:#fff; color:var(--primary); padding:5px 15px; border-radius:20px; font-weight:bold; font-size:14px;"></span>
+        </div>
+        
+        <div class="dashboard-section">
+            <h3>أدوات الإدارة والتصدير</h3>
+            <button class="btn" style="background:#3498db;" onclick="fetchData('today')">📥 سحب الموقف اليومي</button>
+            <button class="btn" style="background:#9b59b6;" onclick="fetchDraft()">📂 فتح المسودة</button>
+            <button class="btn" style="background:#f1c40f; color:#000;" onclick="saveDraft()">💾 حفظ كمسودة</button>
+            <button class="btn" style="background:#2ecc71;" onclick="exportToExcel()">📊 تصدير الخسائر (Excel)</button>
+            <button class="btn" style="background:#34495e;" onclick="exportToWord()">📝 تصدير (Word)</button>
+            <button class="btn" style="background:#e74c3c;" onclick="generatePDF()">📄 اعتماد ومشاركة (PDF)</button>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>توليد التقارير الدورية (تراكمي)</h3>
+            <div style="display:flex; gap:10px;">
+                <select id="report-period" style="width:70%;">
+                    <option value="month">تقرير شهري</option>
+                    <option value="quarter">تقرير ربع سنوي</option>
+                    <option value="half">تقرير نصف سنوي</option>
+                    <option value="year">تقرير سنوي</option>
+                </select>
+                <button class="btn" style="background:var(--gold); color:#000; width:30%; margin:0; margin-top:5px;" onclick="generatePeriodicReport()">توليد التقرير</button>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>تعديل الصياغة قبل الاعتماد</h3>
+            <strong style="color:var(--gold);">المهام المنفذة:</strong>
+            <textarea id="missions" style="height:120px; background:#f4f6f9; color:#000;"></textarea>
+            
+            <strong style="color:var(--gold); display:block; margin-top:15px;">التحركات والزيارات:</strong>
+            <textarea id="movements" style="height:120px; background:#f4f6f9; color:#000;"></textarea>
+        </div>
+
+        <div id="status-msg" style="text-align:center; color:#2ecc71; margin-top:15px; font-weight:bold; font-size:16px;"></div>
+    </div>
+
+    <!-- الورقة الرسمية المخفية للتصدير والطباعة -->
+    <div id="official-report">
+        <table class="header-table">
+            <tr>
+                <td style="width: 33%; text-align: right;">الجمهورية اليمنية<br>وزارة الدفاع<br>رئاسة هيئة الأركان العامة<br>قيادة المنطقة العسكرية السادسة<br>شعبة الرعاية الاجتماعية</td>
+                <td style="width: 33%;"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Emblem_of_Yemen.svg" alt="شعار" height="80"><br><span style="border:1px solid #000; padding:2px 10px; font-size:12pt;">سري جداً</span></td>
+                <td style="width: 33%; text-align: left;">الرقم: ( &nbsp; &nbsp; &nbsp; )<br>التاريخ: <span id="report-date"></span></td>
+            </tr>
+        </table>
+        <div style="text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;" id="doc-title">تقرير الموقف اليومي لشعبة الرعاية الاجتماعية</div>
+        
+        <div class="section-title">المهام المنفذة:</div>
+        <div id="pdf-missions" style="white-space: pre-wrap; margin-bottom:15px; padding:0 10px;"></div>
+        
+        <div class="section-title">التحركات والزيارات:</div>
+        <div id="pdf-movements" style="white-space: pre-wrap; margin-bottom:15px; padding:0 10px;"></div>
+        
+        <div class="section-title">الخسائر البشرية:</div>
+        <table class="data-table" id="pdf-human-table">
+            <thead><tr><th>م</th><th>الرقم العسكري</th><th>الرتبة</th><th>الرتبة المستحقة</th><th>الإسم</th><th>الوحدة</th><th>تاريخ الإصابة</th><th>المكان</th><th>سبب الإصابة</th><th>نوع الإصابة</th><th>المحافظة</th><th>المديرية</th><th>القرية</th><th>الحالة</th></tr></thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="section-title">الخسائر المادية:</div>
+        <table class="data-table" id="pdf-material-table">
+            <thead><tr><th>م</th><th>النوع</th><th>موديل</th><th>الرقم</th><th>نوع التدمير</th><th>نوع العطل</th><th>السبب</th><th>الوحدة</th><th>المكان</th><th>التاريخ</th><th>ملاحظات</th></tr></thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="signature-box">
+            الرتبة / عقيــــــــــــــد<br>الإسم / محمد حسين يحيى ذيبان<br>
+            <div style="border-top: 1px solid #000; margin-top: 10px; padding-top: 5px; display: inline-block; width: 200px; text-align:center;">رئيس شعبة الرعاية الاجتماعية</div>
+        </div>
+    </div>
+
+    <div class="footer" id="page-footer">
+        الدعم الفني والتقني: <a href="https://wa.me/967772914419" target="_blank">967772914419</a>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwXrjPyVzj_z-wIHEYEbhaKRb2wTxbZoNwF5Uw9OkbOA0r_XALUlnYD6Vm0a9Mq9Cy0/exec";
+        const KEY = "Marib_Cipher_2026_!@#";
+        let currentUser = {};
+        let allHumanLosses = []; 
+        let allMaterialLosses = [];
+        
+        document.getElementById('report-date').innerText = new Date().toLocaleDateString('ar-YE');
+
+        // تسجيل الدخول
+        async function login() {
+            document.getElementById('login-status').innerText = "جاري التحقق والمصادقة...";
+            document.getElementById('login-status').style.color = "orange";
+            
+            try {
+                const res = await fetch(`${GAS_URL}?action=login&username=${document.getElementById('username').value}&password=${document.getElementById('password').value}`);
+                const data = await res.json();
+                if(data.status === "success" && data.role === "admin") {
+                    currentUser = data;
+                    document.getElementById('user-badge').innerText = `أهلاً بك: ${data.fullName}`;
+                    document.getElementById('login-screen').style.display = "none";
+                    document.getElementById('admin-panel').style.display = "block";
+                    document.getElementById('official-report').style.display = "block";
+                } else { 
+                    document.getElementById('login-status').innerText = "بيانات غير صحيحة أو تفتقر لصلاحيات القيادة."; 
+                    document.getElementById('login-status').style.color = "#e74c3c";
+                }
+            } catch(e) {
+                document.getElementById('login-status').innerText = "خطأ في الاتصال بالخادم.";
+            }
+        }
+
+        // سحب البيانات وفك التشفير
+        async function fetchData(period = 'today') {
+            document.getElementById('status-msg').innerText = "جاري سحب الطلاسم وفك التشفير...";
+            try {
+                const res = await fetch(`${GAS_URL}?action=get_data`);
+                const data = await res.json();
+                
+                let cMissions = "", cMovements = ""; 
+                allHumanLosses = []; 
+                allMaterialLosses = [];
+                const now = new Date();
+                
+                data.forEach(row => {
+                    if(row.encryptedPayload) {
+                        try {
+                            const report = JSON.parse(CryptoJS.AES.decrypt(row.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
+                            const rDate = new Date(report.date || now);
+                            let inPeriod = false;
+                            
+                            if(period === 'today' && rDate.toDateString() === now.toDateString()) inPeriod = true;
+                            if(period === 'month' && rDate.getMonth() === now.getMonth() && rDate.getFullYear() === now.getFullYear()) inPeriod = true;
+                            if(period === 'year' && rDate.getFullYear() === now.getFullYear()) inPeriod = true;
+                            
+                            if(inPeriod) {
+                                if(report.missions) cMissions += `📌 [مرفوع من المندوب]:\n${report.missions}\n\n`;
+                                if(report.movements) cMovements += `🚗 [مرفوع من المندوب]:\n${report.movements}\n\n`;
+                                if(report.humanLosses) report.humanLosses.forEach(l => allHumanLosses.push(l));
+                                if(report.materialLosses) report.materialLosses.forEach(l => allMaterialLosses.push(l));
+                            }
+                        } catch(e) { console.error("خطأ في فك تشفير حزمة", e); }
+                    }
+                });
+                
+                document.getElementById('missions').value = cMissions; 
+                document.getElementById('movements').value = cMovements;
+                updatePDFView();
+                document.getElementById('status-msg').innerText = "اتممت. تم فك التشفير وتجميع البيانات بنجاح!";
+            } catch(e) {
+                document.getElementById('status-msg').innerText = "حدث خطأ أثناء السحب.";
+            }
+        }
+
+        // سحب المسودة
+        async function fetchDraft() {
+            document.getElementById('status-msg').innerText = "جاري فتح المسودة...";
+            try {
+                const res = await fetch(`${GAS_URL}?action=get_draft`);
+                const data = await res.json();
+                if(data.encryptedPayload) {
+                    const report = JSON.parse(CryptoJS.AES.decrypt(data.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
+                    document.getElementById('missions').value = report.missions || "";
+                    document.getElementById('movements').value = report.movements || "";
+                    allHumanLosses = report.humanLosses || []; 
+                    allMaterialLosses = report.materialLosses || [];
+                    updatePDFView();
+                    document.getElementById('status-msg').innerText = "اتممت. تم فتح المسودة بنجاح.";
+                } else { 
+                    document.getElementById('status-msg').innerText = "لا توجد مسودة محفوظة."; 
+                }
+            } catch(e) {
+                document.getElementById('status-msg').innerText = "حدث خطأ أثناء فتح المسودة.";
+            }
+        }
+
+        // حفظ المسودة
+        async function saveDraft() {
+            document.getElementById('status-msg').innerText = "جاري التشفير وحفظ المسودة...";
+            const reportData = { 
+                date: new Date().toISOString(), 
+                missions: document.getElementById('missions').value, 
+                movements: document.getElementById('movements').value, 
+                humanLosses: allHumanLosses, 
+                materialLosses: allMaterialLosses 
+            };
+            const encrypted = CryptoJS.AES.encrypt(JSON.stringify(reportData), KEY).toString();
+            
+            try {
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify({ action: "save_draft", fullName: currentUser.fullName, encryptedPayload: encrypted }) 
+                });
+                document.getElementById('status-msg').innerText = "اتممت. تم حفظ المسودة بنجاح!";
+            } catch(e) {
+                document.getElementById('status-msg').innerText = "خطأ في الاتصال أثناء الحفظ.";
+            }
+        }
+
+        // توليد التقارير الدورية
+        function generatePeriodicReport() {
+            const p = document.getElementById('report-period').value;
+            const titles = {
+                'month': 'التقرير الشهري التراكمي', 
+                'quarter': 'التقرير الربع سنوي', 
+                'half': 'التقرير النصف سنوي', 
+                'year': 'التقرير السنوي الشامل'
+            };
+            document.getElementById('doc-title').innerText = titles[p] + " لشعبة الرعاية الاجتماعية";
+            fetchData(p);
+        }
+
+        // تحديث واجهة الورقة الرسمية المخفية
+        function updatePDFView() {
+            document.getElementById('pdf-missions').innerText = document.getElementById('missions').value;
+            document.getElementById('pdf-movements').innerText = document.getElementById('movements').value;
+            document.querySelector('#pdf-human-table tbody').innerHTML = '';
+            document.querySelector('#pdf-material-table tbody').innerHTML = '';
+            
+            let h = 1, m = 1;
+            allHumanLosses.forEach(l => {
+                document.querySelector('#pdf-human-table tbody').insertAdjacentHTML('beforeend', `<tr><td>${h++}</td>${l.map(c => `<td>${c}</td>`).join('')}</tr>`);
+            });
+            allMaterialLosses.forEach(l => {
+                document.querySelector('#pdf-material-table tbody').insertAdjacentHTML('beforeend', `<tr><td>${m++}</td>${l.map(c => `<td>${c}</td>`).join('')}</tr>`);
+            });
+        }
+
+        // تصدير الخسائر إلى Excel
+        function exportToExcel() {
+            if(!allHumanLosses.length && !allMaterialLosses.length) return alert("لا توجد بيانات خسائر لتصديرها.");
+            const wb = XLSX.utils.book_new();
+            if(allHumanLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["الرقم العسكري","الرتبة","الرتبة المستحقة","الإسم","الوحدة","تاريخ الإصابة","المكان","سبب الإصابة","نوع الإصابة","المحافظة","المديرية","القرية","الحالة"], ...allHumanLosses]), "الخسائر البشرية");
+            if(allMaterialLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["النوع","موديل","الرقم","نوع التدمير","نوع العطل","السبب","الوحدة","المكان","التاريخ","ملاحظات"], ...allMaterialLosses]), "الخسائر المادية");
+            XLSX.writeFile(wb, `سجل_الخسائر_${new Date().toISOString().slice(0,10)}.xlsx`);
+            document.getElementById('status-msg').innerText = "اتممت. تم تصدير ملف Excel بنجاح.";
+        }
+
+        // تصدير التقرير إلى Word
+        function exportToWord() {
+            updatePDFView();
+            const html = "<html dir='rtl'><head><meta charset='utf-8'><style>table{border-collapse:collapse;width:100%;} th,td{border:1px solid black;padding:5px;text-align:center;} .section-title{font-weight:bold; font-size:14pt; text-decoration:underline;}</style></head><body style='font-family:Arial;'>" + document.getElementById("official-report").innerHTML + "</body></html>";
+            const link = document.createElement('a'); 
+            link.href = URL.createObjectURL(new Blob(['\ufeff', html], {type: 'application/msword'})); 
+            link.download = `تقرير_${new Date().toISOString().slice(0,10)}.doc`; 
+            link.click();
+            document.getElementById('status-msg').innerText = "اتممت. تم تصدير ملف Word بنجاح.";
+        }
+
+        // توليد ملف PDF والمشاركة
+        async function generatePDF() {
+            updatePDFView();
+            document.getElementById('status-msg').innerText = "جاري توليد ملف PDF...";
+            const element = document.getElementById('official-report');
+            const opt = { 
+                margin: 10, 
+                filename: `تقرير_الموقف_${new Date().toISOString().slice(0,10)}.pdf`, 
+                image: { type: 'jpeg', quality: 0.98 }, 
+                html2canvas: { scale: 2 }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            };
+            
+            try {
+                const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+                const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: document.getElementById('doc-title').innerText, text: 'مرفق لكم التقرير الرسمي.' });
+                } else { 
+                    html2pdf().set(opt).from(element).save(); 
+                }
+                document.getElementById('status-msg').innerText = "اتممت. تم توليد واعتماد التقرير بنجاح.";
+            } catch(e) {
+                document.getElementById('status-msg').innerText = "حدث خطأ أثناء توليد ملف PDF.";
+            }
+        }
+    </script>
+</body>
+</html>
