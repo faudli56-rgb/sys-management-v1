@@ -6,38 +6,54 @@
     <title>منظومة القيادة - التحكم المركزي</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* === تصميم واجهة التحكم === */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0b132b; color: #fff; margin: 0; padding: 20px; }
-        .control-panel { max-width: 1000px; margin: 0 auto; background: #1c2541; padding: 25px; border-radius: 8px; border-top: 4px solid #d4af37; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .control-panel { max-width: 900px; margin: 0 auto; background: #1c2541; padding: 25px; border-radius: 8px; border-top: 4px solid #d4af37; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: #d4af37; text-align: center; }
-        .btn { padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; margin: 5px; transition: 0.3s; }
+        .btn { padding: 12px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; margin: 5px; transition: 0.3s; font-size: 15px;}
         .btn:hover { opacity: 0.8; }
-        select, input { padding: 10px; border-radius: 4px; border: 1px solid #3a506b; background: #0b132b; color: #fff; }
+        input { padding: 10px; border-radius: 4px; border: 1px solid #3a506b; background: #0b132b; color: #fff; }
         textarea { width: 100%; height: 120px; background: #0b132b; color: #fff; border: 1px solid #3a506b; padding: 15px; margin-top: 10px; border-radius: 4px; box-sizing: border-box; font-size: 15px; line-height: 1.5; }
         #status-msg { text-align: center; margin-top: 15px; font-weight: bold; color: #d4af37; }
-        .export-group { display: none; margin-top: 15px; border-top: 1px solid #3a506b; padding-top: 15px; }
+        .export-group { display: none; margin-top: 15px; border-top: 1px solid #3a506b; padding-top: 15px; text-align: center; }
 
-        /* === تصميم التقرير الرسمي (مطابق للصورة) === */
-        #doc-container { display: none; background: #555; padding: 20px; text-align: center; }
+        /* === التقرير الرسمي (مخفي برمجياً خارج الشاشة لكي لا يزعج المستخدم) === */
+        #doc-container { 
+            position: absolute; 
+            left: -9999px; /* وضعه خارج الشاشة تماماً */
+            top: 0;
+            background: white; 
+        }
+        
         #official-report { 
             background: white; color: black; width: 210mm; min-height: 297mm; 
-            margin: 0 auto; padding: 10mm; position: relative; text-align: right;
+            padding: 10mm; position: relative; text-align: right;
             font-family: 'Times New Roman', serif; box-sizing: border-box;
             z-index: 1;
         }
         
-        .report-border { border: 2px solid #000; padding: 15px; min-height: 270mm; position: relative; }
-        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60%; opacity: 0.1; z-index: -1; pointer-events: none; }
+        .report-border { border: 2px solid #000; padding: 15px; min-height: 270mm; position: relative; overflow: hidden; }
+        
+        /* العلامة المائية الكبيرة */
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; opacity: 0.07; z-index: -1; pointer-events: none; }
         
         /* الترويسة */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-weight: bold; font-size: 14pt;}
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-weight: bold; font-size: 14pt;}
         .header-table td { vertical-align: top; }
-        .header-right img { max-width: 250px; }
+        
+        /* المخطوطة يمين والنصوص تحتها */
+        .header-right { text-align: center; }
+        .header-right img { max-width: 220px; }
+        .header-right .sub-text { font-size: 13pt; font-weight: bold; line-height: 1.4; margin-top: 5px; }
+        
         .header-center { text-align: center; }
         .header-center img { height: 90px; margin-top: 5px; }
+        
         .header-left { text-align: left; line-height: 1.6; direction: rtl; }
+        
+        /* الخط الفاصل */
+        hr.divider { border: 0; border-top: 2px solid #000; margin: 10px 0; }
         
         /* العناوين */
         .doc-title { text-align: center; font-size: 15pt; font-weight: bold; margin: 15px auto; text-decoration: underline; }
@@ -48,19 +64,14 @@
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10pt; text-align: center; }
         .data-table th, .data-table td { border: 1px solid #000; padding: 5px; font-weight: bold; }
         
-        /* التوقيع */
+        /* التوقيع الاحترافي المائل */
         .signature-block { position: absolute; bottom: 40px; left: 40px; text-align: right; font-weight: bold; font-size: 14pt; line-height: 1.5; width: 220px; }
-        .signature-img { width: 180px; position: absolute; top: -50px; left: 20px; z-index: 2; mix-blend-mode: multiply; }
-        
-        @media print { 
-            .control-panel, #doc-container { display: none !important; } 
-            body { background: white; padding: 0; } 
-            #official-report { margin: 0; padding: 0; display: block; box-shadow: none; border: none;} 
-        }
+        .signature-img { width: 160px; position: absolute; top: -65px; left: 10px; z-index: 2; mix-blend-mode: multiply; transform: rotate(-15deg); }
     </style>
 </head>
 <body>
 
+<!-- شاشة تسجيل الدخول -->
 <div class="control-panel" id="login-screen" style="max-width: 400px;">
     <h2>بوابة القيادة العليا</h2>
     <input type="text" id="username" placeholder="اسم المستخدم" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
@@ -68,23 +79,21 @@
     <button class="btn" style="background:#d4af37; color:#0b132b; width:100%;" onclick="login()">دخول للمنظومة</button>
 </div>
 
+<!-- لوحة التحكم -->
 <div class="control-panel" id="admin-panel" style="display:none;">
     <h2>التحكم المركزي والعمليات</h2>
     
-    <!-- أدوات العمليات -->
     <div style="background:#0b132b; padding:15px; border-radius:5px; text-align:center; border: 1px solid #3a506b;">
-        <button class="btn" style="background:#3498db;" onclick="fetchData('today')">📥 سحب تقارير اليوم</button>
+        <button class="btn" style="background:#3498db;" onclick="fetchData()">📥 سحب تقارير اليوم</button>
         <button class="btn" style="background:#9b59b6;" onclick="fetchDraft()">📂 فتح المسودة</button>
         <button class="btn" style="background:#f39c12;" onclick="saveDraft()">💾 حفظ كمسودة</button>
-        <button class="btn" style="background:#27ae60; font-size: 16px; padding: 10px 25px;" onclick="approveReport()">✅ اعتماد التقرير</button>
+        <button class="btn" style="background:#27ae60;" onclick="approveReport()">✅ اعتماد التقرير</button>
     </div>
 
-    <!-- تظهر فقط بعد ضغط "اعتماد التقرير" -->
-    <div class="export-group" id="export-buttons" style="text-align:center;">
-        <span style="color:#2ecc71; font-weight:bold; margin-left:15px;">تم الاعتماد. اختر صيغة التصدير:</span>
-        <button class="btn" style="background:#e74c3c;" onclick="generatePDF()">📄 تصدير PDF</button>
-        <button class="btn" style="background:#34495e;" onclick="exportToWord()">📝 تصدير Word</button>
-        <button class="btn" style="background:#16a085;" onclick="exportToExcel()">📊 تصدير Excel</button>
+    <!-- يظهر فقط بعد الاعتماد -->
+    <div class="export-group" id="export-buttons">
+        <span style="color:#2ecc71; font-weight:bold; margin-left:15px;">تم اعتماد الموقف بنجاح!</span>
+        <button class="btn" style="background:#e74c3c;" onclick="generatePDF()">📄 تحميل التقرير (PDF) للمشاركة</button>
     </div>
 
     <h3 style="color:#d4af37; margin-top:20px;">المهام المنفذة:</h3>
@@ -96,22 +105,24 @@
     <div id="status-msg">النظام جاهز.</div>
 </div>
 
-<!-- حاوية التقرير الرسمي للطباعة والتصدير -->
+<!-- حاوية التقرير المخفية لغرض التصدير فقط -->
 <div id="doc-container">
     <div id="official-report">
         <div class="report-border">
-            <!-- العلامة المائية -->
+            <!-- العلامة المائية الكبيرة -->
             <img src="https://lh3.googleusercontent.com/d/1_w3dOe8DhNoHwBfn1KBqczGupCv0AVOc" class="watermark" crossorigin="anonymous">
             
             <table class="header-table">
                 <tr>
                     <td style="width: 33%;" class="header-right">
-                        <!-- المخطوطة اليمنى -->
                         <img src="https://lh3.googleusercontent.com/d/1y3bTDxMFwU0zGI-0XJOK070CIQxOuLHI" crossorigin="anonymous">
+                        <div class="sub-text">
+                            قيادة المنطقة العسكرية السادسة<br>
+                            شعبة الرعاية الاجتماعية
+                        </div>
                     </td>
                     <td style="width: 33%;" class="header-center">
                         <div style="font-family: 'Traditional Arabic', serif; font-size: 20pt; font-weight: bold; margin-bottom: 5px;">بسم الله الرحمن الرحيم</div>
-                        <!-- الطير الجمهوري -->
                         <img src="https://lh3.googleusercontent.com/d/1Hdpr5cf2Z0bCLO6qLYsWxBikD_miplSh" crossorigin="anonymous">
                         <div style="font-weight: bold; font-size: 11pt; margin-top: 2px;">سري جداً</div>
                     </td>
@@ -121,6 +132,8 @@
                     </td>
                 </tr>
             </table>
+            
+            <hr class="divider">
             
             <div class="doc-title" id="doc-title-text">تقرير الموقف اليومي لشعبة الرعاية الاجتماعية ليوم <span id="day-name"></span> خلال 24 ساعة الماضية بتاريخ <span id="doc-date-2"></span></div>
             
@@ -162,7 +175,7 @@
             <div class="content-text"><br><br></div>
 
             <div class="signature-block">
-                <!-- التوقيع -->
+                <!-- التوقيع المائل الاحترافي -->
                 <img src="https://lh3.googleusercontent.com/d/1-swUSNpQPKptK_AlTzlFEOxFvdwj4sQ7" class="signature-img" crossorigin="anonymous">
                 <div style="position: relative; z-index: 3;">
                     الرتبة / عقيــــــــــــــد<br>
@@ -205,7 +218,7 @@
         } catch(e) { alert("خطأ في الاتصال بقاعدة البيانات."); }
     }
 
-    // دالة السحب الذكية والموسعة لتجنب أخطاء الوقت
+    // دالة السحب المضمونة (تفحص السجلات بغض النظر عن فروق الوقت البسيطة)
     async function fetchData() {
         const msg = document.getElementById('status-msg');
         msg.innerText = "جاري سحب تقارير اليوم...";
@@ -216,7 +229,7 @@
             let cMissions = "", cMovements = "", count = 0;
             allHumanLosses = []; allMaterialLosses = [];
             
-            // سيعتمد السحب على أي تقرير تم رفعه خلال الـ 24 ساعة الماضية لضمان عدم ضياع شيء
+            // للحصول على التقارير، نقوم بتوسيع نطاق المطابقة ليشمل آخر 48 ساعة أو مطابقة اليوم لتجنب أخطاء التاريخ
             const todayTime = now.getTime();
 
             data.forEach(row => {
@@ -224,9 +237,10 @@
                     if(row.encryptedPayload) {
                         const decrypted = JSON.parse(CryptoJS.AES.decrypt(row.encryptedPayload, KEY).toString(CryptoJS.enc.Utf8));
                         let rDate = decrypted.date ? new Date(decrypted.date).getTime() : 0;
+                        let rDateString = decrypted.date ? new Date(decrypted.date).toDateString() : "";
                         
-                        // الفحص: هل التقرير أحدث من 24 ساعة (86400000 ملي ثانية)؟
-                        if((todayTime - rDate) <= 86400000 || new Date(decrypted.date).toDateString() === now.toDateString()) {
+                        // يطابق إذا كان التقرير ضمن الـ 24 ساعة الماضية، أو إذا كان تاريخ التقرير يطابق تاريخ اليوم
+                        if((todayTime - rDate) <= 172800000 || rDateString === now.toDateString()) {
                             count++;
                             if(decrypted.missions) cMissions += `${decrypted.missions}\n`;
                             if(decrypted.movements) cMovements += `${decrypted.movements}\n`;
@@ -245,7 +259,7 @@
                 msg.innerText = `تم سحب وتجميع (${count}) تقارير بنجاح.`;
             } else {
                 msg.style.color = "#e74c3c";
-                msg.innerText = "لا توجد تقارير مرفوعة في الساعات الماضية.";
+                msg.innerText = "لا توجد تقارير مطابقة حالياً.";
             }
             
         } catch(e) { msg.style.color = "#e74c3c"; msg.innerText = "خطأ في الاتصال بالسيرفر."; }
@@ -276,7 +290,7 @@
         } catch(e) { document.getElementById('status-msg').innerText = "خطأ الاتصال."; }
     }
 
-    // دالة الاعتماد (تجهز البيانات وتظهر أزرار التصدير)
+    // الاعتماد وإظهار زر الـ PDF
     function approveReport() {
         document.getElementById('pdf-missions').innerText = document.getElementById('missions').value;
         document.getElementById('pdf-movements').innerText = document.getElementById('movements').value;
@@ -298,44 +312,41 @@
         }
 
         document.getElementById('export-buttons').style.display = 'block';
-        document.getElementById('status-msg').innerText = "تم تجهيز واعتماد التقرير. يمكنك التصدير الآن.";
+        document.getElementById('status-msg').innerText = "تم تجهيز التقرير. يمكنك تحميله الآن كـ PDF.";
     }
 
+    // تنزيل مباشر إلى الهاتف كملف PDF
     function generatePDF() {
         const element = document.getElementById('official-report');
-        document.getElementById('doc-container').style.display = "block";
-        document.getElementById('status-msg').innerText = "جاري توليد ملف الـ PDF...";
+        const msg = document.getElementById('status-msg');
+        msg.innerText = "جاري إنشاء وتنزيل ملف التقرير... يرجى الانتظار.";
+        msg.style.color = "#f1c40f";
         
-        html2pdf().set({
+        const opt = {
             margin: 0,
-            filename: `تقرير_الموقف_${formattedDate.replace(/\//g, '-')}.pdf`,
+            filename: `تقرير_الموقف_اليومي_${formattedDate.replace(/\//g, '-')}.pdf`,
             image: { type: 'jpeg', quality: 1 },
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).from(element).save().then(() => {
-            document.getElementById('doc-container').style.display = "none";
-            document.getElementById('status-msg').innerText = "تم تصدير الـ PDF بنجاح!";
+        };
+
+        // تحويل الملف وحفظه مباشرة في الذاكرة لتجنب أي تعليق في المتصفح
+        html2pdf().set(opt).outputPdf('blob').then(function(pdfBlob) {
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = opt.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            msg.style.color = "#2ecc71";
+            msg.innerText = "تم التنزيل بنجاح! تفقد ملفات هاتفك/جهازك.";
         }).catch(err => {
-            document.getElementById('doc-container').style.display = "none";
-            alert("حدث خطأ أثناء التصدير، تأكد من سرعة الإنترنت.");
+            msg.style.color = "#e74c3c";
+            msg.innerText = "فشل التنزيل، تأكد من اتصالك بالإنترنت.";
         });
-    }
-
-    function exportToWord() {
-        const element = document.getElementById("official-report").innerHTML;
-        const html = "<html dir='rtl'><head><meta charset='utf-8'><style>body{font-family:'Times New Roman';} table{border-collapse:collapse;width:100%;} th,td{border:1px solid black;padding:5px; text-align:center;}</style></head><body>" + element + "</body></html>";
-        const link = document.createElement('a'); 
-        link.href = URL.createObjectURL(new Blob(['\ufeff', html], {type: 'application/msword'})); 
-        link.download = `تقرير_الموقف_${formattedDate.replace(/\//g, '-')}.doc`; 
-        link.click();
-    }
-
-    function exportToExcel() {
-        if(!allHumanLosses.length && !allMaterialLosses.length) return alert("لا توجد خسائر لتصديرها.");
-        const wb = XLSX.utils.book_new();
-        if(allHumanLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["الرقم العسكري","الرتبة","الرتبة المستحقة","الاسم","الوحدة","تاريخ الاستشهاد/الاصابة","مكان الاستشهاد/الاصابة","سبب الاستشهاد/الاصابة","نوع الاصابة","المحافظة","المديرية","العزلة","الحالة"], ...allHumanLosses]), "بشرية");
-        if(allMaterialLosses.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["النوع","موديل","الرقم","نوع التدمير","نوع العطل","السبب","الوحدة","المكان","التاريخ","ملاحظات"], ...allMaterialLosses]), "مادية");
-        XLSX.writeFile(wb, `الخسائر_${formattedDate.replace(/\//g, '-')}.xlsx`);
     }
 </script>
 </body>
